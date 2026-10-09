@@ -1,37 +1,38 @@
-name: Node.js CI
+name: Build and publish Hacker's Terminal
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
+          node-version: '22'
+          cache: npm
       - run: npm ci
+      - run: npx tsc --noEmit -p tsconfig.app.json
+      - run: npm run lint
       - run: npm run build
-
-      # Deploy to GitHub Pages after successful build
-      - name: Deploy to GitHub Pages
-        if: ${{ github.ref == 'refs/heads/main' }} # Only deploy from main branch
-        uses: peaceiris/actions-gh-pages@v3
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.apitoken }}
-          publish_dir: ./dist  # Vite builds the app into 'dist'
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
