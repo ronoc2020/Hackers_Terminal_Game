@@ -1,87 +1,101 @@
-export const commands: { [key: string]: string } = {
-  ls: 'List directory contents',
-  cd: 'Change directory',
-  pwd: 'Print working directory',
-  cat: 'Concatenate and display file contents',
-  grep: 'Search for patterns in files',
-  chmod: 'Change file permissions',
-  ssh: 'Secure shell remote login',
-  nmap: 'Network exploration and security auditing',
-  ping: 'Send ICMP echo request to network hosts',
-  ifconfig: 'Configure network interface parameters',
-  netstat: 'Print network connections, routing tables, interface statistics, masquerade connections, and multicast memberships',
-  tcpdump: 'Dump traffic on a network',
-  wireshark: 'Interactively analyze network traffic',
-  mission: 'Display current mission objectives',
-  clear: 'Clear the terminal screen',
-  exit: 'Exit the game',
-  decode: 'Decode an encoded message',
-};
+export type FileNode = string | { [name: string]: FileNode };
 
-export const tools: { [key: string]: string } = {
-  shodan: 'Search engine for Internet-connected devices',
-  maltego: 'Interactive data mining tool',
-  theHarvester: 'Gather emails, subdomains, hosts, employee names, open ports and banners from different public sources',
-  reconNg: 'Full-featured Web Reconnaissance framework',
-  nmap: 'Network exploration and security auditing',
-  metasploit: 'Penetration testing framework',
-  wireshark: 'Network protocol analyzer',
-  burpsuite: 'Web application security testing',
-  aircrackNg: 'Complete suite for auditing wireless networks',
-  sqlmap: 'Automatic SQL injection and database takeover tool',
-};
-
-export const fileSystem: { [key: string]: string | { [key: string]: string } } = {
-  '/': {
-    'home': {
-      'user': {
-        'documents': {
-          'secret.txt': 'VGhlIGtleSB0byB0aGUgbmV4dCBsZXZlbCBpczogQ2ljYWRhMzMwMQ==',
-          'todo.txt': '1. Check server logs\n2. Update firewall rules\n3. Investigate suspicious IP: 192.168.1.100',
-        },
-        'downloads': {
-          'mysterious_image.jpg': '[Binary data]',
-        },
+export const fileSystem: { [name: string]: FileNode } = {
+  home: {
+    user: {
+      documents: {
+        'secret.txt': 'VGhlIGtleSB0byB0aGUgbmV4dCBsZXZlbCBpczogQ2ljYWRhMzMwMQ==',
+        'todo.txt': '1. Review server logs\n2. Verify firewall policy\n3. Investigate suspicious IP: 192.168.1.100',
       },
+      downloads: { 'mysterious_image.jpg': '[Simulated binary data]' },
     },
-    'etc': {
-      'passwd': 'root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:User,,,:/home/user:/bin/bash',
-    },
-    'var': {
-      'log': {
-        'auth.log': '... Failed login attempt from 10.0.0.5 ...',
-      },
-    },
+  },
+  etc: {
+    passwd: 'root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:User:/home/user:/bin/sh',
+  },
+  var: {
+    log: { 'auth.log': 'Oct 09 09:15:00 host sshd: Failed login from 192.168.1.100\nOct 09 09:16:00 host sshd: Accepted login for user' },
   },
 };
 
-export const missions: { [key: string]: { description: string; objectives: string[]; reward: number } } = {
-  1: {
-    description: "Welcome, recruit. Your first mission is to familiarize yourself with the system and find a hidden message.",
-    objectives: [
-      "Use 'ls' to list the contents of the current directory",
-      "Navigate to the 'documents' folder using 'cd'",
-      "Use 'cat' to read the contents of 'secret.txt'",
-      "Decode the message using the 'decode' command",
-    ],
+export const commandHelp: Record<string, string> = {
+  help: 'Display command reference',
+  mission: 'Show current mission and objective progress',
+  status: 'Show score and completed objectives',
+  pwd: 'Show current directory',
+  ls: 'List files in the simulated filesystem',
+  cd: 'Change simulated directory (supports .. and absolute paths)',
+  cat: 'Read a simulated file',
+  grep: 'Search a simulated text file, e.g. grep Failed auth.log',
+  decode: 'Decode Base64 locally',
+  nmap: 'Simulated scan of a fictional lab host, e.g. nmap 192.168.1.100',
+  clear: 'Clear terminal output',
+};
+
+export interface MissionObjective {
+  key: string;
+  label: string;
+  matches: (command: string, arg: string) => boolean;
+}
+
+export interface Mission {
+  id: number;
+  description: string;
+  reward: number;
+  objectives: MissionObjective[];
+}
+
+export const missions: Mission[] = [
+  {
+    id: 1,
+    description: 'Find the encoded note and decode it using the local lab filesystem.',
     reward: 100,
-  },
-  2: {
-    description: "Good job on your first mission. Now, let's do some basic reconnaissance on a target system.",
     objectives: [
-      "Use 'nmap' to scan the IP address 192.168.1.100",
-      "Check the 'auth.log' file in the '/var/log' directory for any suspicious activity",
-      "Use 'grep' to search for 'Failed login' in the auth.log file",
+      { key: 'list', label: 'Run ls', matches: (command) => command === 'ls' },
+      { key: 'enter', label: 'Navigate to /home/user/documents', matches: (command, arg) => command === 'cd' && arg.endsWith('/documents') },
+      { key: 'read', label: 'Read secret.txt', matches: (command, arg) => command === 'cat' && arg.endsWith('/secret.txt') },
+      { key: 'decode', label: 'Decode the Base64 note', matches: (command, arg) => command === 'decode' && arg === 'VGhlIGtleSB0byB0aGUgbmV4dCBsZXZlbCBpczogQ2ljYWRhMzMwMQ==' },
     ],
-    reward: 150,
   },
-  // Add more missions as needed
-};
+  {
+    id: 2,
+    description: 'Investigate suspicious simulated login attempts. No real network traffic is sent.',
+    reward: 150,
+    objectives: [
+      { key: 'logs', label: 'Enter /var/log', matches: (command, arg) => command === 'cd' && arg === '/var/log' },
+      { key: 'inspect', label: 'Read auth.log', matches: (command, arg) => command === 'cat' && arg.endsWith('/auth.log') },
+      { key: 'search', label: 'Search for Failed in auth.log', matches: (command, arg) => command === 'grep' && arg.toLowerCase().includes('failed') && arg.endsWith('auth.log') },
+      { key: 'scan', label: 'Simulate nmap 192.168.1.100', matches: (command, arg) => command === 'nmap' && arg === '192.168.1.100' },
+    ],
+  },
+];
 
-export const decodeBase64 = (str: string): string => {
-  try {
-    return atob(str);
-  } catch {
-    return "Failed to decode. Make sure the input is valid Base64.";
+export function normalizePath(base: string, target: string): string {
+  const input = target === '~' ? '/home/user' : target;
+  const segments = (input.startsWith('/') ? input : base + '/' + input).split('/');
+  const stack: string[] = [];
+  for (const segment of segments) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') stack.pop();
+    else stack.push(segment);
   }
-};
+  return '/' + stack.join('/');
+}
+
+export function getNode(absolutePath: string): FileNode | null {
+  let current: FileNode = fileSystem;
+  for (const segment of absolutePath.split('/').filter(Boolean)) {
+    if (typeof current === 'string' || !Object.prototype.hasOwnProperty.call(current, segment)) return null;
+    current = current[segment];
+  }
+  return current;
+}
+
+export function decodeBase64(encoded: string): string | null {
+  try {
+    if (!encoded || !/^[a-zA-Z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) return null;
+    return atob(encoded);
+  } catch {
+    return null;
+  }
+}
