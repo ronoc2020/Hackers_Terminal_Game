@@ -68,6 +68,28 @@ export const missions: Mission[] = [
       { key: 'scan', label: 'Simulate nmap 192.168.1.100', matches: (command, arg) => command === 'nmap' && arg === '192.168.1.100' },
     ],
   },
+  {
+    id: 3,
+    description: 'Audit the local training system. Trace how a simulated user is configured.',
+    reward: 200,
+    objectives: [
+      { key: 'root', label: 'Return to filesystem root: cd /', matches: (command, arg) => command === 'cd' && arg === '/' },
+      { key: 'etc', label: 'Enter /etc', matches: (command, arg) => command === 'cd' && arg === '/etc' },
+      { key: 'passwd', label: 'Read passwd', matches: (command, arg) => command === 'cat' && arg === '/etc/passwd' },
+      { key: 'finduser', label: 'Search for user in passwd', matches: (command, arg) => command === 'grep' && arg.toLowerCase().includes('user') && arg.endsWith('/etc/passwd') },
+    ],
+  },
+  {
+    id: 4,
+    description: 'Complete the investigation by reviewing the notes left in the lab.',
+    reward: 250,
+    objectives: [
+      { key: 'documents', label: 'Return to /home/user/documents', matches: (command, arg) => command === 'cd' && arg === '/home/user/documents' },
+      { key: 'todo', label: 'Read todo.txt', matches: (command, arg) => command === 'cat' && arg === '/home/user/documents/todo.txt' },
+      { key: 'logreview', label: 'Review auth.log using an absolute path', matches: (command, arg) => command === 'cat' && arg === '/var/log/auth.log' },
+      { key: 'finalscan', label: 'Verify the lab host with simulated nmap', matches: (command, arg) => command === 'nmap' && arg === '192.168.1.100' },
+    ],
+  },
 ];
 
 export function normalizePath(base: string, target: string): string {
