@@ -7,7 +7,7 @@ Browser-based, entirely simulated cybersecurity missions with no backend, accoun
 - Search and navigate a simulated Linux filesystem with `ls`, `cd`, `pwd`, `cat` and `grep`.
 - Decode Base64 notes with `decode`.
 - Run a **simulated** `nmap` command against a fictional lab IP (no network packets sent).
-- Complete two deterministic missions with tracked objective progress and XP.
+- Complete four deterministic missions with tracked objective progress and XP.
 - Responsive terminal, keyboard input, accessible input labels, skip-intro control, and no third-party services at runtime.
 
 ## Run locally
@@ -24,7 +24,8 @@ Open the URL printed by Vite (normally `http://localhost:5173`).
 ## Offline checks
 
 ```bash
-npx tsc --noEmit -p tsconfig.app.json
+npm run typecheck
+npm test
 npm run lint
 npm run build
 ```
@@ -41,4 +42,4 @@ Everything happens in local browser memory. The game makes no attacks, real scan
 
 ## Current scope
 
-Two complete missions. No account system, backend, leaderboard, or multiplayer has been claimed or implemented.
+Four complete missions. No account system, backend, leaderboard, or multiplayer has been claimed or implemented.
