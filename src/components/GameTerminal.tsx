@@ -1,201 +1,160 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { commands, tools, fileSystem, missions, decodeBase64 } from '../data/gameData';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { commandHelp, decodeBase64, fileSystem, getNode, missions, normalizePath } from '../data/gameData';
 
-const GameTerminal: React.FC = () => {
+const INITIAL_OUTPUT = [
+  "Welcome to Hacker's Terminal — safe, entirely simulated lab.",
+  'Type help for available commands, or mission for objectives.',
+];
+
+export default function GameTerminal() {
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState<string[]>(['Welcome to Hacker\'s Terminal. Type "help" for available commands.', 'Type "mission" to start your first mission.']);
-  const [currentDirectory, setCurrentDirectory] = useState('/home/user');
-  const [currentMission, setCurrentMission] = useState(1);
+  const [output, setOutput] = useState<string[]>(INITIAL_OUTPUT);
+  const [cwd, setCwd] = useState('/home/user');
+  const [missionNumber, setMissionNumber] = useState(1);
+  const [finished, setFinished] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
+  const mission = missions.find((item) => item.id === missionNumber);
 
+  useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
   }, [output]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    processCommand(input);
+  function runCommand(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const raw = input.trim();
     setInput('');
-  };
+    if (!raw) return;
 
-  const getDirectoryContents = (path: string): string[] | null => {
-    const parts = path.split('/').filter(Boolean);
-    let current: any = fileSystem['/'];
-    for (const part of parts) {
-      if (current[part]) {
-        current = current[part];
-      } else {
-        return null;
-      }
+    const space = raw.search(/\s/);
+    const command = (space < 0 ? raw : raw.slice(0, space)).toLowerCase();
+    const arg = space < 0 ? '' : raw.slice(space).trim();
+    const lines: string[] = [];
+    let succeeded = false;
+    let objectiveArg = arg;
+
+    if (command === 'clear') {
+      setOutput([]);
+      return;
     }
-    return Object.keys(current);
-  };
-
-  const getFileContents = (path: string): string | null => {
-    const parts = path.split('/').filter(Boolean);
-    let current: any = fileSystem['/'];
-    for (const part of parts.slice(0, -1)) {
-      if (current[part]) {
-        current = current[part];
-      } else {
-        return null;
-      }
-    }
-    const fileName = parts[parts.length - 1];
-    return current[fileName] || null;
-  };
-
-  const processCommand = (cmd: string) => {
-    const trimmedCmd = cmd.trim().toLowerCase();
-    const [command, ...args] = trimmedCmd.split(' ');
-    setOutput(prev => [...prev, `$ ${cmd}`]);
 
     switch (command) {
       case 'help':
-        setOutput(prev => [
-          ...prev,
-          'Available commands:',
-          ...Object.keys(commands).map(cmd => `  ${cmd}: ${commands[cmd]}`),
-          '',
-          'Available tools:',
-          ...Object.keys(tools).map(tool => `  ${tool}: ${tools[tool]}`)
-        ]);
+        lines.push('COMMANDS:', ...Object.entries(commandHelp).map(([name, detail]) => '  ' + name + ' — ' + detail));
+        succeeded = true;
         break;
-      case 'clear':
-        setOutput([]);
+      case 'pwd':
+        lines.push(cwd);
+        succeeded = true;
         break;
-      case 'ls':
-        const contents = getDirectoryContents(currentDirectory);
-        if (contents) {
-          setOutput(prev => [...prev, ...contents]);
-        } else {
-          setOutput(prev => [...prev, 'Directory not found']);
+      case 'ls': {
+        const path = normalizePath(cwd, arg || '.');
+        const node = getNode(path);
+        if (node === null) lines.push('ls: path not found');
+        else if (typeof node === 'string') lines.push(path.split('/').pop() || '');
+        else { lines.push(Object.keys(node).join('    ') || '(empty)'); succeeded = true; }
+        break;
+      }
+      case 'cd': {
+        const path = normalizePath(cwd, arg || '~');
+        const node = getNode(path);
+        if (node === null || typeof node === 'string') lines.push('cd: directory not found');
+        else { setCwd(path); objectiveArg = path; succeeded = true; lines.push('Now in ' + path); }
+        break;
+      }
+      case 'cat': {
+        if (!arg) { lines.push('Usage: cat <file>'); break; }
+        const path = normalizePath(cwd, arg);
+        const node = getNode(path);
+        if (typeof node === 'string') { lines.push(node); objectiveArg = path; succeeded = true; }
+        else lines.push('cat: file not found');
+        break;
+      }
+      case 'grep': {
+        const match = arg.match(/^(?:"([^"]+)"|'([^']+)'|(\S+))\s+(.+)$/);
+        if (!match) { lines.push('Usage: grep <text> <file>'); break; }
+        const needle = match[1] || match[2] || match[3];
+        const path = normalizePath(cwd, match[4]);
+        const node = getNode(path);
+        if (typeof node !== 'string') lines.push('grep: file not found');
+        else {
+          const hits = node.split('\n').filter((line) => line.toLowerCase().includes(needle.toLowerCase()));
+          lines.push(...(hits.length ? hits : ['(no matches)']));
+          objectiveArg = needle + ' ' + path;
+          succeeded = hits.length > 0;
         }
         break;
-      case 'cd':
-        if (args[0]) {
-          const newPath = args[0].startsWith('/') ? args[0] : `${currentDirectory}/${args[0]}`;
-          const contents = getDirectoryContents(newPath);
-          if (contents) {
-            setCurrentDirectory(newPath);
-            setOutput(prev => [...prev, `Changed directory to ${newPath}`]);
-          } else {
-            setOutput(prev => [...prev, 'Directory not found']);
-          }
-        } else {
-          setOutput(prev => [...prev, 'Usage: cd <directory>']);
-        }
+      }
+      case 'decode': {
+        const decoded = decodeBase64(arg);
+        if (decoded === null) lines.push('decode: invalid Base64 payload');
+        else { lines.push('Decoded: ' + decoded); succeeded = true; }
         break;
-      case 'cat':
-        if (args[0]) {
-          const filePath = args[0].startsWith('/') ? args[0] : `${currentDirectory}/${args[0]}`;
-          const contents = getFileContents(filePath);
-          if (contents) {
-            setOutput(prev => [...prev, contents]);
-          } else {
-            setOutput(prev => [...prev, 'File not found']);
-          }
-        } else {
-          setOutput(prev => [...prev, 'Usage: cat <filename>']);
-        }
-        break;
-      case 'decode':
-        if (args[0]) {
-          const decoded = decodeBase64(args[0]);
-          setOutput(prev => [...prev, `Decoded message: ${decoded}`]);
-        } else {
-          setOutput(prev => [...prev, 'Usage: decode <base64_string>']);
+      }
+      case 'nmap':
+        if (arg !== '192.168.1.100') lines.push('SIMULATED LAB ONLY. Try: nmap 192.168.1.100');
+        else {
+          lines.push('[SIMULATION — no packets sent]', 'Host 192.168.1.100 is up.', '22/tcp open ssh', '80/tcp open http');
+          succeeded = true;
         }
         break;
       case 'mission':
-        const mission = missions[currentMission];
-        if (mission) {
-          setOutput(prev => [
-            ...prev,
-            `Mission ${currentMission}:`,
-            mission.description,
-            'Objectives:',
-            ...mission.objectives.map((obj, index) => `${index + 1}. ${obj}`),
-            `Reward: ${mission.reward} points`
-          ]);
-        } else {
-          setOutput(prev => [...prev, 'No more missions available. You\'ve completed the game!']);
-        }
+        if (!mission) lines.push('All missions complete. Congratulations!');
+        else lines.push('MISSION ' + mission.id + ': ' + mission.description,
+          ...mission.objectives.map((obj) => (finished.includes(obj.key) ? '[x] ' : '[ ] ') + obj.label),
+          'Reward: ' + mission.reward + ' XP');
+        succeeded = true;
+        break;
+      case 'status':
+        lines.push('Score: ' + score + ' | Mission: ' + (mission?.id || 'completed'),
+          'Objectives completed: ' + finished.length + '/' + (mission?.objectives.length || 0));
+        succeeded = true;
         break;
       default:
-        if (commands[command]) {
-          setOutput(prev => [...prev, `Simulating: ${commands[command]}`]);
-          checkMissionProgress(command, args.join(' '));
-        } else if (tools[command]) {
-          setOutput(prev => [...prev, `Using tool: ${tools[command]}`]);
-          checkMissionProgress(command, args.join(' '));
-        } else {
-          setOutput(prev => [...prev, `Command not recognized: ${command}. Type "help" for available commands.`]);
-        }
+        lines.push('Unknown command: ' + command + '. Type help.');
     }
-  };
 
-  const checkMissionProgress = (command: string, args: string) => {
-    const mission = missions[currentMission];
-    if (mission) {
-      const completedObjective = mission.objectives.find(obj => 
-        obj.toLowerCase().includes(command) && (!args || obj.toLowerCase().includes(args))
-      );
-      if (completedObjective) {
-        setOutput(prev => [...prev, 'Objective completed!']);
-        const remainingObjectives = mission.objectives.filter(obj => obj !== completedObjective);
-        if (remainingObjectives.length === 0) {
-          setScore(prev => prev + mission.reward);
-          setCurrentMission(prev => prev + 1);
-          setOutput(prev => [
-            ...prev,
-            `Congratulations! You've completed Mission ${currentMission}!`,
-            `You've earned ${mission.reward} points.`,
-            'Type "mission" to see your next objective.'
-          ]);
-        }
+    if (succeeded && mission) {
+      const objective = mission.objectives.find((item) => !finished.includes(item.key) && item.matches(command, objectiveArg));
+      if (objective) {
+        const next = [...finished, objective.key];
+        lines.push('[+] Objective complete: ' + objective.label);
+        if (next.length === mission.objectives.length) {
+          setScore((prev) => prev + mission.reward);
+          setMissionNumber(mission.id + 1);
+          setFinished([]);
+          lines.push('[+] Mission complete! +' + mission.reward + ' XP',
+            'Type mission to inspect your next assignment.');
+        } else setFinished(next);
       }
     }
-  };
+
+    setOutput((previous) => [...previous, '$ ' + raw, ...lines].slice(-250));
+  }
 
   return (
-    <div className="flex-grow bg-black p-4 overflow-hidden flex flex-col">
-      <div className="mb-2">
-        <span className="text-blue-500">Current Mission: {currentMission}</span>
-        <span className="text-yellow-500 ml-4">Score: {score}</span>
+    <section className="flex-1 min-w-0 flex flex-col bg-black p-4 gap-3" aria-label="Interactive training terminal">
+      <div className="flex flex-wrap gap-5 text-sm">
+        <span className="text-sky-400">Mission: {mission?.id || 'Complete'}</span>
+        <span className="text-yellow-400">Score: {score}</span>
+        <span className="text-green-300">{finished.length}/{mission?.objectives.length || 0} objectives</span>
       </div>
-      <div ref={outputRef} className="flex-grow overflow-auto mb-4">
-        {output.map((line, index) => (
-          <p key={index} className="mb-1">{line}</p>
-        ))}
+      <div ref={outputRef} role="log" aria-label="Terminal output" aria-live="polite"
+        className="flex-1 min-h-48 overflow-y-auto rounded border border-green-900 bg-zinc-950 p-3">
+        {output.map((line, index) => <div key={index} className="whitespace-pre-wrap break-words leading-6">{line || '\u00a0'}</div>)}
       </div>
-      <form onSubmit={handleSubmit} className="flex">
-        <span className="mr-2 text-green-500">{currentDirectory} $</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={handleInputChange}
-          className="flex-grow bg-transparent outline-none text-green-500"
-          autoFocus
-        />
+      <form onSubmit={runCommand} className="flex items-center gap-2 border-t border-green-900 pt-3">
+        <label htmlFor="terminal-input" className="text-green-400 whitespace-nowrap text-xs sm:text-sm">{cwd} $</label>
+        <input id="terminal-input" ref={inputRef} value={input}
+          onChange={(event) => setInput(event.target.value)} spellCheck={false}
+          autoCapitalize="none" autoComplete="off"
+          aria-label="Terminal command" placeholder="help, mission, ls..."
+          className="min-w-0 flex-1 bg-transparent rounded outline-none focus-visible:ring-2 focus-visible:ring-green-400 px-2 py-2 text-green-300" />
+        <button type="submit" className="rounded bg-green-800 px-3 py-2 text-white hover:bg-green-700 focus-visible:ring-2">Run</button>
       </form>
-    </div>
+      <p className="text-xs text-green-600">All commands are simulated locally. No external hosts are contacted.</p>
+    </section>
   );
-};
-
-export default GameTerminal;
+}
