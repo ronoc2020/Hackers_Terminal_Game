@@ -1,105 +1,44 @@
-# Hackers Terminal Game🚀 - Prototype Game
-<p align="center">
-  <img src="https://raw.githubusercontent.com/ronoc2020/Hackers_Terminal_Game/main/Hakcers%20Terminal%20Game%20banner.jpg" alt="Logo" style="width: 400px; border-radius: 25px;"/>
-</p>
+# Hacker's Terminal — safe cybersecurity training game
 
-A web-based Hackers-themed terminal game inspired by the popular series *Mr. Robot*. This interactive game allows users to learn about common OSINT (Open Source Intelligence) tools and Linux hacking commands while engaging in a simulated environment.
+Browser-based, entirely simulated cybersecurity missions with no backend, account, telemetry, or network scanning. Built with React, TypeScript, Vite, and Tailwind CSS.
 
+## What works
 
-![Build Status](https://img.shields.io/travis/yourusername/yourrepository.svg?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
+- Search and navigate a simulated Linux filesystem with `ls`, `cd`, `pwd`, `cat` and `grep`.
+- Decode Base64 notes with `decode`.
+- Run a **simulated** `nmap` command against a fictional lab IP (no network packets sent).
+- Complete two deterministic missions with tracked objective progress and XP.
+- Responsive terminal, keyboard input, accessible input labels, skip-intro control, and no third-party services at runtime.
 
-## Table of Contents
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Game Structure](#game-structure)
-- [Enhancements](#enhancements)
-- [Contributing](#contributing)
-- [License](#license)
-- [Disclaimer](#disclaimer)
+## Run locally
 
-## Features
-- Futuristic-looking terminal interface with a green-on-black color scheme.
-- Instructions screen that guides users through the game.
-- Functional terminal for inputting Linux commands and OSINT tools.
-- Basic animations and auto-scrolling output area for smooth user experience.
-- Educational content surrounding common hacking tools and techniques.
+```bash
+git clone https://github.com/ronoc2020/Hackers_Terminal_Game.git
+cd Hackers_Terminal_Game
+npm ci
+npm run dev
+```
 
-## Installation
+Open the URL printed by Vite (normally `http://localhost:5173`).
 
-To set up the project on your local machine, you will need Node.js and npm installed. Follow these steps:
+## Offline checks
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd Hackers-terminal-game
+```bash
+npx tsc --noEmit -p tsconfig.app.json
+npm run lint
+npm run build
+```
 
-    
+## Publish
 
-    Install dependencies:
+The included workflow builds once with Node 22 and uses GitHub's official Pages artifact deployment. It does **not** require a custom `apitoken` secret. Configure GitHub Pages deployment source to **GitHub Actions**.
 
-          
+**GitHub Actions quota notice (October 2026):** repair is staged in `repair/no-actions-20261009` while the account quota is exhausted. Creating this branch does not trigger the workflow (which listens only to pushes on `main`). Do not merge until CI usage becomes available again, or publish the built `dist/` directory through a separate authorized static host.
 
-npm install
+## Educational scope
 
-    
+Everything happens in local browser memory. The game makes no attacks, real scans, or outbound API calls. Commands never execute against your operating system. The lab IP is simulated.
 
-Start the development server:
+## Current scope
 
-      
-
-    npm run dev
-
-        
-
-Your game should now be running on http://localhost:3000 or any specified port in your terminal.
-Usage
-To Play the Game:
-
-    Upon starting, you will see an instruction screen for 10 seconds.
-    The terminal interface will appear where you can input commands.
-    Type help to see a list of available commands and tools.
-    Use the commands to explore the simulated environment and learn about various hacking techniques.
-
-Available Commands:
-
-    help: Lists available commands and their descriptions.
-    ls: Lists files and directories (you can enhance functionality).
-    Various OSINT tools and Linux commands that can be typed for responses.
-
-Game Structure
-
-The game consists of several components:
-
-    src/App.tsx: Main application component.
-    src/components/GameTerminal.tsx: The terminal interface and command processing logic.
-    src/components/Instructions.tsx: Displays game instructions.
-    src/data/gameData.ts: Contains a collection of commands and their descriptions.
-    src/index.css: Styles for the application.
-
-Enhancements
-
-To further enhance the game, consider the following features:
-
-    Implement specific missions or challenges that require players to complete objectives.
-    Enhance command processing with detailed responses or functionalities (e.g., ls could show a list of fake files).
-    Develop a scoring system based on completed tasks or correct command usage.
-    Add detailed tool descriptions when users input related commands.
-
-Contributing
-
-Contributions are welcome! If you'd like to contribute to the game, please follow these steps:
-
-    Fork the repository.
-    Create a new branch for your feature or bug fix.
-    Make your changes and commit them.
-    Push to your branch and open a pull request.
-
-License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-Disclaimer
-
-This is a simulated environment for educational purposes. Always use your skills ethically and legally in the real world!
-Check out our [live demo](https://youtu.be/uyDXRM1UpLc) to see it in action! 🎮
+Two complete missions. No account system, backend, leaderboard, or multiplayer has been claimed or implemented.
