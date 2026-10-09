@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { commandHelp, decodeBase64, fileSystem, getNode, missions, normalizePath } from '../data/gameData';
+import { commandHelp, decodeBase64, getNode, missions, normalizePath } from '../data/gameData';
 
 const INITIAL_OUTPUT = [
   "Welcome to Hacker's Terminal — safe, entirely simulated lab.",
