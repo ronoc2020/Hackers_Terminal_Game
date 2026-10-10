@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { commandHelp, decodeBase64, getNode, missions, normalizePath } from '../data/gameData';
 
 const INITIAL_OUTPUT = [
@@ -21,7 +21,7 @@ function initialProgress(): SavedProgress {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as Partial<SavedProgress> | null;
     if (!saved || typeof saved !== 'object') return fallback;
     const missionNumber = saved.missionNumber;
-    if (!Number.isInteger(missionNumber) || missionNumber! < 1 || missionNumber! > missions.length + 1) return fallback;
+    if (typeof missionNumber !== 'number' || !Number.isInteger(missionNumber) || missionNumber < 1 || missionNumber > missions.length + 1) return fallback;
     const mission = missions.find((item) => item.id === missionNumber);
     const allowedKeys = new Set(mission?.objectives.map((item) => item.key) || []);
     const cwd = typeof saved.cwd === 'string' && getNode(saved.cwd) !== null &&
@@ -31,7 +31,7 @@ function initialProgress(): SavedProgress {
       ? saved.score : 0;
     return {
       cwd,
-      missionNumber: missionNumber!,
+      missionNumber,
       score,
       finished: Array.isArray(saved.finished)
         ? [...new Set(saved.finished.filter((item): item is string =>
@@ -83,7 +83,7 @@ export default function GameTerminal() {
     inputRef.current?.focus();
   }
 
-  function recallHistory(event: React.KeyboardEvent<HTMLInputElement>) {
+  function recallHistory(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     if (!historyRef.current.length) return;
     event.preventDefault();
