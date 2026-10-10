@@ -6,13 +6,54 @@ const INITIAL_OUTPUT = [
   'Type help for available commands, or mission for objectives.',
 ];
 
+const STORAGE_KEY = 'hackers-terminal-game-progress-v1';
+
+interface SavedProgress {
+  cwd: string;
+  missionNumber: number;
+  finished: string[];
+  score: number;
+}
+
+function initialProgress(): SavedProgress {
+  const fallback: SavedProgress = { cwd: '/home/user', missionNumber: 1, finished: [], score: 0 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as Partial<SavedProgress> | null;
+    if (!saved || typeof saved !== 'object') return fallback;
+    const missionNumber = saved.missionNumber;
+    if (!Number.isInteger(missionNumber) || missionNumber! < 1 || missionNumber! > missions.length + 1) return fallback;
+    const mission = missions.find((item) => item.id === missionNumber);
+    const allowedKeys = new Set(mission?.objectives.map((item) => item.key) || []);
+    const cwd = typeof saved.cwd === 'string' && getNode(saved.cwd) !== null &&
+      typeof getNode(saved.cwd) !== 'string' ? saved.cwd : fallback.cwd;
+    const score = typeof saved.score === 'number' && Number.isSafeInteger(saved.score) &&
+      saved.score >= 0 && saved.score <= missions.reduce((sum, item) => sum + item.reward, 0)
+      ? saved.score : 0;
+    return {
+      cwd,
+      missionNumber: missionNumber!,
+      score,
+      finished: Array.isArray(saved.finished)
+        ? [...new Set(saved.finished.filter((item): item is string =>
+          typeof item === 'string' && allowedKeys.has(item)))]
+        : [],
+    };
+  } catch {
+    // Private-browsing contexts can deny storage.
+    return fallback;
+  }
+}
+
 export default function GameTerminal() {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<string[]>(INITIAL_OUTPUT);
-  const [cwd, setCwd] = useState('/home/user');
-  const [missionNumber, setMissionNumber] = useState(1);
-  const [finished, setFinished] = useState<string[]>([]);
-  const [score, setScore] = useState(0);
+  const [savedProgress] = useState(initialProgress);
+  const [cwd, setCwd] = useState(savedProgress.cwd);
+  const [missionNumber, setMissionNumber] = useState(savedProgress.missionNumber);
+  const [finished, setFinished] = useState<string[]>(savedProgress.finished);
+  const [score, setScore] = useState(savedProgress.score);
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const mission = missions.find((item) => item.id === missionNumber);
@@ -21,12 +62,46 @@ export default function GameTerminal() {
   useEffect(() => {
     if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
   }, [output]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ cwd, missionNumber, finished, score }));
+    } catch {
+      // Progress works in memory if storage is restricted or full.
+    }
+  }, [cwd, missionNumber, finished, score]);
+
+  function resetProgress() {
+    if (!window.confirm('Reset all four training missions and your local score?')) return;
+    setCwd('/home/user');
+    setMissionNumber(1);
+    setFinished([]);
+    setScore(0);
+    setInput('');
+    setOutput(INITIAL_OUTPUT);
+    historyRef.current = [];
+    historyIndexRef.current = 0;
+    inputRef.current?.focus();
+  }
+
+  function recallHistory(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    if (!historyRef.current.length) return;
+    event.preventDefault();
+    const delta = event.key === 'ArrowUp' ? -1 : 1;
+    historyIndexRef.current = Math.min(historyRef.current.length,
+      Math.max(0, historyIndexRef.current + delta));
+    setInput(historyRef.current[historyIndexRef.current] || '');
+  }
 
   function runCommand(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const raw = input.trim();
     setInput('');
     if (!raw) return;
+    if (historyRef.current[historyRef.current.length - 1] !== raw) {
+      historyRef.current = [...historyRef.current, raw].slice(-50);
+    }
+    historyIndexRef.current = historyRef.current.length;
 
     const space = raw.search(/\s/);
     const command = (space < 0 ? raw : raw.slice(0, space)).toLowerCase();
@@ -136,10 +211,14 @@ export default function GameTerminal() {
 
   return (
     <section className="flex-1 min-w-0 flex flex-col bg-black p-4 gap-3" aria-label="Interactive training terminal">
-      <div className="flex flex-wrap gap-5 text-sm">
+      <div className="flex flex-wrap gap-4 text-sm items-center">
         <span className="text-sky-400">Mission: {mission?.id || 'Complete'}</span>
         <span className="text-yellow-400">Score: {score}</span>
         <span className="text-green-300">{finished.length}/{mission?.objectives.length || 0} objectives</span>
+        <button type="button" onClick={resetProgress}
+          className="ml-auto rounded border border-zinc-600 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-green-400">
+          Reset progress
+        </button>
       </div>
       <div ref={outputRef} role="log" aria-label="Terminal output" aria-live="polite"
         className="flex-1 min-h-48 overflow-y-auto rounded border border-green-900 bg-zinc-950 p-3">
@@ -148,13 +227,13 @@ export default function GameTerminal() {
       <form onSubmit={runCommand} className="flex items-center gap-2 border-t border-green-900 pt-3">
         <label htmlFor="terminal-input" className="text-green-400 whitespace-nowrap text-xs sm:text-sm">{cwd} $</label>
         <input id="terminal-input" ref={inputRef} value={input}
-          onChange={(event) => setInput(event.target.value)} spellCheck={false}
+          onChange={(event) => setInput(event.target.value)} onKeyDown={recallHistory} spellCheck={false}
           autoCapitalize="none" autoComplete="off"
           aria-label="Terminal command" placeholder="help, mission, ls..."
           className="min-w-0 flex-1 bg-transparent rounded outline-none focus-visible:ring-2 focus-visible:ring-green-400 px-2 py-2 text-green-300" />
         <button type="submit" className="rounded bg-green-800 px-3 py-2 text-white hover:bg-green-700 focus-visible:ring-2">Run</button>
       </form>
-      <p className="text-xs text-green-600">All commands are simulated locally. No external hosts are contacted.</p>
+      <p className="text-xs text-green-500">Progress saves locally when your browser allows it. ↑/↓ recall commands. All commands are simulated; no external hosts are contacted.</p>
     </section>
   );
 }
