@@ -8,7 +8,8 @@ Browser-based, entirely simulated cybersecurity missions with no backend, accoun
 - Decode Base64 notes with `decode`.
 - Run a **simulated** `nmap` command against a fictional lab IP (no network packets sent).
 - Complete four deterministic missions with tracked objective progress and XP.
-- Responsive terminal, keyboard input, accessible input labels, skip-intro control, and no third-party services at runtime.
+- Responsive terminal, accessible keyboard and mobile input, ↑/↓ command history, local progress saving, a reset control, and a skip-intro button.
+- No third-party services, cookies, sign-in, or network calls are needed at runtime. Storage access is optional and guarded against errors.
 
 ## Run locally
 
@@ -42,4 +43,4 @@ Everything happens in local browser memory. The game makes no attacks, real scan
 
 ## Current scope
 
-Four complete missions. No account system, backend, leaderboard, or multiplayer has been claimed or implemented.
+Four complete missions with optional local save. No account system, backend, leaderboard, or multiplayer has been claimed or implemented.
