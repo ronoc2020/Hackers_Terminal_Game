@@ -13,7 +13,7 @@ const Instructions: React.FC = () => {
         <li>Type commands in the terminal prompt</li>
         <li>Use "help" to see available commands and tools</li>
         <li>Type "mission" to see your current objectives</li>
-        <li>Complete missions by using the correct sequence of commands</li>
+        <li>Complete objectives by using simulated commands. Check your mission for what to do next</li>
         <li>Decode hidden messages and explore the file system</li>
         <li>Earn points for completing missions and advance to the next level</li>
       </ol>
@@ -25,13 +25,15 @@ const Instructions: React.FC = () => {
         <li>cd: Change directory</li>
         <li>cat: Read file contents</li>
         <li>decode: Decode Base64 encoded messages</li>
+        <li>grep: Search for text inside a simulated file</li>
+        <li>nmap: Show a fictional lab scan (never scans real hosts)</li>
         <li>clear: Clear the terminal screen</li>
       </ul>
       <p className="mb-4">
         Remember, this is a simulated environment. Always use your skills ethically and legally in the real world.
       </p>
       <p className="text-sm italic">
-        The game will start in a few seconds. Good luck, hacker!
+        Four missions are available. Progress is saved locally if browser storage is enabled; use the Reset button to start again. Press ↑/↓ to recall past commands. The game will start shortly.
       </p>
     </div>
   );
